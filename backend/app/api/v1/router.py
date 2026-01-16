@@ -1,3 +1,4 @@
+from fastapi import APIRouter
 from app.api.v1.endpoints import auth, contacts, deals, activities, dashboard
 
 api_router = APIRouter()

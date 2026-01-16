@@ -7,8 +7,8 @@ class Settings(BaseSettings):
     
     # Database
     # Format: postgresql+asyncpg://user:password@host:port/dbname
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/minicrm_db"
-    
+    DATABASE_URL: str = "postgresql+asyncpg://postgres:password@localhost:5432/crm_db"
+
     # Security
     SECRET_KEY: str = "CHANGE_THIS_IN_PRODUCTION_SECRET_KEY"
     ALGORITHM: str = "HS256"

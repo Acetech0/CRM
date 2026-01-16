@@ -9,6 +9,8 @@ from app.db.base import Base
 class UserRole(str, enum.Enum):
     ADMIN = "admin"
     MEMBER = "member"
+    SALES = "sales"
+    VIEWER = "viewer"
 
 class User(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

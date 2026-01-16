@@ -6,4 +6,9 @@ pydantic-settings
 alembic
 pyjwt
 passlib[bcrypt]
+passlib[bcrypt]
 python-multipart
+slowapi
+fastapi-cache2[redis]
+python-json-logger
+email-validator

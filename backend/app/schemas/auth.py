@@ -1,5 +1,6 @@
 from typing import Optional
-from pydantic import BaseModel, EmailStr, constr
+from uuid import UUID
+from pydantic import BaseModel, EmailStr, constr, Field
 
 # Shared properties
 class TenantBase(BaseModel):
@@ -10,7 +11,7 @@ class TenantCreate(TenantBase):
     pass
 
 class TenantRead(TenantBase):
-    id: str  # Pydantic handles UUID -> str conversion usually, but explicitly typing str is safe for APIs
+    id: UUID
     is_active: bool
 
     class Config:
@@ -22,12 +23,12 @@ class UserBase(BaseModel):
     full_name: Optional[str] = None
 
 class UserCreate(UserBase):
-    password: str
+    password: str = Field(..., min_length=8, max_length=64)
     role: str = "member"
 
 class UserRead(UserBase):
-    id: str
-    tenant_id: str
+    id: UUID
+    tenant_id: UUID
     is_active: bool
     role: str
 
@@ -39,10 +40,10 @@ class AuthRegister(BaseModel):
     company_name: str
     company_slug: constr(to_lower=True, min_length=3, strip_whitespace=True)
     admin_email: EmailStr
-    admin_password: str
+    admin_password: str = Field(..., min_length=8, max_length=64)
     admin_name: str
 
 class AuthLogin(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(..., min_length=8, max_length=64)
     tenant_slug: str

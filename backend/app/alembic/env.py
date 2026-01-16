@@ -15,6 +15,8 @@ from app.models.user import User
 from app.models.contact import Contact
 from app.models.deal import Deal
 from app.models.activity import Activity
+from app.models.audit import AuditLog
+from app.models.webhook import WebhookSubscription
 
 config = context.config
 

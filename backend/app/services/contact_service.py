@@ -1,13 +1,13 @@
 from typing import List, Optional
+from fastapi import BackgroundTasks, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy.dialects.postgresql import UUID
-from fastapi import HTTPException
 from sqlalchemy import func
 from app.models.contact import Contact
 from app.models.deal import Deal
 from app.models.activity import Activity
 from app.schemas.crm import ContactCreate, ContactUpdate, ContactSummary
+from app.services.audit_service import AuditService
 
 class ContactService:
     @staticmethod
@@ -28,7 +28,13 @@ class ContactService:
         return result.scalars().all()
 
     @staticmethod
-    async def create(db: AsyncSession, tenant_id: str, data: ContactCreate) -> Contact:
+    async def create(
+        db: AsyncSession, 
+        tenant_id: str, 
+        data: ContactCreate,
+        background_tasks: Optional[BackgroundTasks] = None,
+        user_id: Optional[str] = None
+    ) -> Contact:
         contact = Contact(
             **data.model_dump(),
             tenant_id=tenant_id
@@ -36,6 +42,19 @@ class ContactService:
         db.add(contact)
         await db.commit()
         await db.refresh(contact)
+        
+        if background_tasks:
+            # Async Audit Log
+            background_tasks.add_task(
+                AuditService.log_event,
+                tenant_id=tenant_id,
+                action="contact.created",
+                user_id=user_id,
+                entity_type="contact",
+                entity_id=str(contact.id),
+                metadata={"name": contact.name, "source": contact.source}
+            )
+            
         return contact
 
     @staticmethod

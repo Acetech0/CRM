@@ -1,7 +1,7 @@
 from typing import Generator, Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import jwt, JWTError
+import jwt
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -28,7 +28,7 @@ async def get_current_user_context(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
         token_data = TokenPayload(**payload)
-    except (JWTError, ValidationError):
+    except (jwt.InvalidTokenError, ValidationError):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Could not validate credentials",
@@ -99,3 +99,16 @@ async def get_current_active_admin(
             detail="The user does not have enough privileges"
         )
     return current_user
+
+def require_role(required_roles: list[UserRole]):
+    """
+    Factory for a dependency that checks if the user has one of the required roles.
+    """
+    async def role_checker(current_user: User = Depends(get_current_user)):
+        if current_user.role not in required_roles:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Role {current_user.role} does not have sufficient permissions"
+            )
+        return current_user
+    return role_checker

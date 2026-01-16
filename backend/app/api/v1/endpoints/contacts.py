@@ -1,19 +1,23 @@
 from typing import List
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.models.user import User
 from app.api import deps
 from app.schemas.crm import ContactCreate, ContactRead, ContactUpdate, ContactSummary
 from app.services.contact_service import ContactService
+from app.models.user import User
 
 router = APIRouter()
 
 @router.post("/", response_model=ContactRead)
 async def create_contact(
     data: ContactCreate,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(deps.get_db),
-    tenant_id: str = Depends(deps.get_current_tenant_id)
+    tenant_id: str = Depends(deps.get_current_tenant_id),
+    current_user: User = Depends(deps.get_current_user)
 ):
-    return await ContactService.create(db, tenant_id, data)
+    return await ContactService.create(db, tenant_id, data, background_tasks, str(current_user.id))
 
 @router.get("/", response_model=List[ContactRead])
 async def read_contacts(

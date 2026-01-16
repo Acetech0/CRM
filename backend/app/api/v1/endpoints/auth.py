@@ -16,6 +16,7 @@ async def register(
     data: AuthRegister,
     db: AsyncSession = Depends(get_db)
 ):
+    print("🔥 REGISTER ENDPOINT HIT")
     # 1. Check if Tenant slug exists
     stmt = select(Tenant).where(Tenant.slug == data.company_slug)
     result = await db.execute(stmt)
@@ -33,7 +34,7 @@ async def register(
             slug=data.company_slug
         )
         db.add(new_tenant)
-        await db.flush()  # To get new_tenant.id
+        await db.flush()  # Generates ID for new_tenant (via Python default or DB returning)
 
         # Create Admin User
         hashed_password = security.get_password_hash(data.admin_password)
@@ -42,7 +43,7 @@ async def register(
             password_hash=hashed_password,
             full_name=data.admin_name,
             role=UserRole.ADMIN,
-            tenant_id=new_tenant.id
+            tenant_id=new_tenant.id  # Link to the new tenant
         )
         db.add(new_user)
         
@@ -50,12 +51,28 @@ async def register(
         await db.refresh(new_user)
         return new_user
         
+    except ValueError as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
     except Exception as e:
         await db.rollback()
-        # In production, log the actual error
+        # Check for IntegrityError (Postgres unique violation)
+        if "integrity" in str(e).lower() or "unique" in str(e).lower():
+             raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Tenant slug or email already exists."
+            )
+            
+        # Log the real error internally
+        import traceback
+        traceback.print_exc()
+        
         raise HTTPException(
-            status_code=500,
-            detail=f"Registration failed: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Registration failed. Please try again later."
         )
 
 @router.post("/login", response_model=Token)

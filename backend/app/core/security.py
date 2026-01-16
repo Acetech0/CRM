@@ -1,16 +1,35 @@
 from datetime import datetime, timedelta
 from typing import Optional, Any, Union
-from jose import jwt
-from passlib.context import CryptContext
+import jwt
+import bcrypt
 from app.core.config import settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+def _prepare_password(password: str) -> bytes:
+    """
+    Prepare password for bcrypt:
+    1. Encode to UTF-8
+    2. Truncate to 72 bytes (bcrypt's hard limit)
+    
+    This ensures we never crash on long passwords.
+    """
+    return password.encode("utf-8")[:72]
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    # bcrypt.checkpw expects both arguments to be bytes
+    try:
+        return bcrypt.checkpw(
+            _prepare_password(plain_password),
+            hashed_password.encode("utf-8")
+        )
+    except ValueError:
+        # Handle cases where hashed_password might be invalid formatting
+        return False
 
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    # salt is generated automatically by gensalt
+    pwd_bytes = _prepare_password(password)
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(pwd_bytes, salt).decode("utf-8")
 
 def create_access_token(subject: Union[str, Any], tenant_id: str, expires_delta: Optional[timedelta] = None) -> str:
     if expires_delta:
