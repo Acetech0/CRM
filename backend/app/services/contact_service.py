@@ -1,0 +1,100 @@
+from typing import List, Optional
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+from sqlalchemy.dialects.postgresql import UUID
+from fastapi import HTTPException
+from sqlalchemy import func
+from app.models.contact import Contact
+from app.models.deal import Deal
+from app.models.activity import Activity
+from app.schemas.crm import ContactCreate, ContactUpdate, ContactSummary
+
+class ContactService:
+    @staticmethod
+    async def get(db: AsyncSession, tenant_id: str, contact_id: str) -> Optional[Contact]:
+        stmt = select(Contact).where(
+            Contact.id == contact_id,
+            Contact.tenant_id == tenant_id
+        )
+        result = await db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def get_all(db: AsyncSession, tenant_id: str, skip: int = 0, limit: int = 100) -> List[Contact]:
+        stmt = select(Contact).where(
+            Contact.tenant_id == tenant_id
+        ).offset(skip).limit(limit)
+        result = await db.execute(stmt)
+        return result.scalars().all()
+
+    @staticmethod
+    async def create(db: AsyncSession, tenant_id: str, data: ContactCreate) -> Contact:
+        contact = Contact(
+            **data.model_dump(),
+            tenant_id=tenant_id
+        )
+        db.add(contact)
+        await db.commit()
+        await db.refresh(contact)
+        return contact
+
+    @staticmethod
+    async def update(db: AsyncSession, tenant_id: str, contact_id: str, data: ContactUpdate) -> Contact:
+        contact = await ContactService.get(db, tenant_id, contact_id)
+        if not contact:
+            raise HTTPException(status_code=404, detail="Contact not found")
+            
+        update_data = data.model_dump(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(contact, key, value)
+            
+        db.add(contact)
+        await db.commit()
+        await db.refresh(contact)
+        return contact
+
+    @staticmethod
+    async def get_summary(db: AsyncSession, tenant_id: str, contact_id: str) -> ContactSummary:
+        # 1. Get Contact
+        contact = await ContactService.get(db, tenant_id, contact_id)
+        if not contact:
+            raise HTTPException(status_code=404, detail="Contact not found")
+            
+        # 2. Get Recent Activities (Limit 5)
+        stmt_act = select(Activity).where(
+            Activity.contact_id == contact_id,
+            Activity.tenant_id == tenant_id
+        ).order_by(Activity.created_at.desc()).limit(5)
+        activities = (await db.execute(stmt_act)).scalars().all()
+        
+        # 3. Get Active Deals & Pipeline Value
+        stmt_deals = select(Deal).where(
+            Deal.contact_id == contact_id,
+            Deal.tenant_id == tenant_id
+        )
+        deals = (await db.execute(stmt_deals)).scalars().all()
+        
+        # 4. Aggregates (Count activities)
+        stmt_count = select(func.count(Activity.id)).where(
+            Activity.contact_id == contact_id,
+            Activity.tenant_id == tenant_id
+        )
+        act_count = (await db.execute(stmt_count)).scalar() or 0
+        
+        pipeline_value = sum(d.value for d in deals)
+        
+        return {
+            "contact": contact,
+            "deals": deals,
+            "recent_activities": activities,
+            "activity_count": act_count,
+            "total_pipeline_value": float(pipeline_value)
+        }
+
+    @staticmethod
+    async def delete(db: AsyncSession, tenant_id: str, contact_id: str):
+        contact = await ContactService.get(db, tenant_id, contact_id)
+        if not contact:
+            raise HTTPException(status_code=404, detail="Contact not found")
+        await db.delete(contact)
+        await db.commit()
