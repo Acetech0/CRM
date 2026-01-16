@@ -12,8 +12,10 @@ class ContactBase(BaseModel):
     source: Optional[str] = None
     status: ContactStatus = ContactStatus.NEW
 
+from uuid import UUID
+
 class ContactCreate(ContactBase):
-    pass
+    website_id: Optional[UUID] = None
 
 class ContactUpdate(BaseModel):
     name: Optional[str] = None
@@ -45,6 +47,9 @@ class DealUpdate(BaseModel):
     value: Optional[float] = None
     stage: Optional[DealStage] = None
 
+class DealStageUpdate(BaseModel):
+    stage: DealStage
+
 class DealRead(DealBase):
     id: str
     tenant_id: str
@@ -62,6 +67,10 @@ class ActivityBase(BaseModel):
 
 class ActivityCreate(ActivityBase):
     contact_id: str
+
+class ActivityUpdate(BaseModel):
+    content: Optional[str] = None
+    type: Optional[ActivityType] = None
 
 class ActivityRead(ActivityBase):
     id: str

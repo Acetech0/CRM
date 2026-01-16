@@ -9,10 +9,23 @@ export const DealStage = {
 export type DealStage = typeof DealStage[keyof typeof DealStage];
 
 export interface Deal {
-    id: number;
+    id: string;
     title: string;
     value: number;
     stage: DealStage;
-    contact_id: number;
+    contact_id: string;
     created_at: string;
+}
+
+export interface DealCreate {
+    title: string;
+    value: number;
+    stage?: DealStage;
+    contact_id: string;
+}
+
+export interface DealUpdate {
+    title?: string;
+    value?: number;
+    stage?: DealStage;
 }

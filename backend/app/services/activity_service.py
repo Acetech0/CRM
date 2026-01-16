@@ -5,7 +5,7 @@ from sqlalchemy.future import select
 from fastapi import HTTPException
 from app.models.activity import Activity
 from app.models.contact import Contact
-from app.schemas.crm import ActivityCreate
+from app.schemas.crm import ActivityCreate, ActivityUpdate
 
 class ActivityService:
     @staticmethod
@@ -50,3 +50,28 @@ class ActivityService:
         
         result = await db.execute(stmt)
         return result.scalars().all()
+
+    @staticmethod
+    async def update(db: AsyncSession, tenant_id: str, activity_id: str, data: ActivityUpdate) -> Activity:
+        stmt = select(Activity).where(Activity.id == activity_id, Activity.tenant_id == tenant_id)
+        activity = (await db.execute(stmt)).scalar_one_or_none()
+        if not activity:
+            raise HTTPException(status_code=404, detail="Activity not found")
+        
+        update_data = data.model_dump(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(activity, key, value)
+            
+        db.add(activity)
+        await db.commit()
+        await db.refresh(activity)
+        return activity
+
+    @staticmethod
+    async def delete(db: AsyncSession, tenant_id: str, activity_id: str):
+        stmt = select(Activity).where(Activity.id == activity_id, Activity.tenant_id == tenant_id)
+        activity = (await db.execute(stmt)).scalar_one_or_none()
+        if not activity:
+            raise HTTPException(status_code=404, detail="Activity not found")
+        await db.delete(activity)
+        await db.commit()

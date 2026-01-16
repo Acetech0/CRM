@@ -2,7 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.api import deps
-from app.schemas.crm import ActivityCreate, ActivityRead
+from app.schemas.crm import ActivityCreate, ActivityRead, ActivityUpdate
 from app.models.activity import ActivityType
 from app.models.user import User
 from app.services.activity_service import ActivityService
@@ -28,3 +28,21 @@ async def read_activities(
     tenant_id: str = Depends(deps.get_current_tenant_id)
 ):
     return await ActivityService.get_by_contact(db, tenant_id, contact_id, skip=skip, limit=limit, type_=type)
+
+@router.put("/{activity_id}", response_model=ActivityRead)
+async def update_activity(
+    activity_id: str,
+    data: ActivityUpdate,
+    db: AsyncSession = Depends(deps.get_db),
+    tenant_id: str = Depends(deps.get_current_tenant_id)
+):
+    return await ActivityService.update(db, tenant_id, activity_id, data)
+
+@router.delete("/{activity_id}")
+async def delete_activity(
+    activity_id: str,
+    db: AsyncSession = Depends(deps.get_db),
+    tenant_id: str = Depends(deps.get_current_tenant_id)
+):
+    await ActivityService.delete(db, tenant_id, activity_id)
+    return {"status": "success"}

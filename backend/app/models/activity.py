@@ -10,6 +10,7 @@ class ActivityType(str, enum.Enum):
     EMAIL = "email"
     NOTE = "note"
     MEETING = "meeting"
+    FORM = "form"
 
 class Activity(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -23,7 +24,7 @@ class Activity(Base):
     
     # Relationships
     contact_id = Column(UUID(as_uuid=True), ForeignKey("contact.id"), nullable=False, index=True)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=True)
 
     __table_args__ = (
         Index('ix_activity_tenant_created', 'tenant_id', 'created_at'),

@@ -5,8 +5,10 @@ from app.db.session import get_db
 from app.schemas.auth import AuthRegister, AuthLogin, UserRead
 from app.schemas.token import Token
 from app.models.tenant import Tenant
+from app.models.website import Website
 from app.models.user import User, UserRole
 from app.core import security
+import uuid
 from app.core.config import settings
 
 router = APIRouter()
@@ -46,6 +48,16 @@ async def register(
             tenant_id=new_tenant.id  # Link to the new tenant
         )
         db.add(new_user)
+        
+        # Create System Website (for Manual Contacts)
+        system_site = Website(
+            domain=f"internal.{data.company_slug}.crm",
+            name="System Internal",
+            tenant_id=new_tenant.id,
+            is_system=True,
+            tracking_id=f"SYS-{uuid.uuid4().hex[:8].upper()}"
+        )
+        db.add(system_site)
         
         await db.commit()
         await db.refresh(new_user)

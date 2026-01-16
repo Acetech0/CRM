@@ -13,3 +13,11 @@ export interface ContactCreate {
     email: string;
     phone: string;
 }
+
+export interface ContactSummary {
+    contact: Contact;
+    recent_activities: any[]; // refine type later if needed
+    deals: any[];
+    activity_count: number;
+    total_pipeline_value: number;
+}

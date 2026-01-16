@@ -8,6 +8,8 @@ from app.models.deal import Deal
 from app.models.activity import Activity
 from app.schemas.crm import ContactCreate, ContactUpdate, ContactSummary
 from app.services.audit_service import AuditService
+from app.models.website import Website
+import uuid
 
 class ContactService:
     @staticmethod
@@ -35,9 +37,43 @@ class ContactService:
         background_tasks: Optional[BackgroundTasks] = None,
         user_id: Optional[str] = None
     ) -> Contact:
+        website_id = data.website_id
+        
+        # Logic: If no website provided (Manual), use Tenant's System Website
+        if not website_id:
+            stmt = select(Website).where(
+                Website.tenant_id == tenant_id,
+                Website.is_system == True
+            )
+            system_site = (await db.execute(stmt)).scalar_one_or_none()
+            
+            # Fallback: Create if somehow missing
+            if not system_site:
+                print(f"⚠️ System Website missing for tenant {tenant_id}. Creating lazily.")
+                system_site = Website(
+                    domain=f"internal.{tenant_id}.crm",
+                    name="System Internal",
+                    tenant_id=tenant_id,
+                    is_system=True,
+                    tracking_id=f"SYS-{uuid.uuid4().hex[:8].upper()}"
+                )
+                db.add(system_site)
+                await db.flush()
+            
+            website_id = system_site.id
+            if not data.source:
+                data.source = "manual"
+        
+        else:
+            # Verify Website ownership
+            stmt = select(Website).where(Website.id == website_id, Website.tenant_id == tenant_id)
+            if not (await db.execute(stmt)).scalar_one_or_none():
+                 raise HTTPException(400, "Invalid Website ID for this tenant")
+
         contact = Contact(
-            **data.model_dump(),
-            tenant_id=tenant_id
+            **data.model_dump(exclude={"website_id"}), # Exclude to avoid double logic
+            tenant_id=tenant_id,
+            website_id=website_id
         )
         db.add(contact)
         await db.commit()
