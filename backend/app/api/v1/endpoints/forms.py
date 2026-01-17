@@ -17,6 +17,36 @@ import uuid
 
 router = APIRouter()
 
+@router.get("/websites/{website_id}/forms", response_model=List[FormResponse])
+def read_forms(
+    website_id: uuid.UUID,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_user),
+) -> Any:
+    """
+    Retrieve forms for a website.
+    """
+    # Verify Website ownership
+    stmt = select(Website).where(
+        Website.id == website_id,
+        Website.tenant_id == current_user.tenant_id
+    )
+    website = db.execute(stmt).scalar_one_or_none()
+    if not website:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Website not found"
+        )
+
+    stmt = select(Form).where(
+        Form.website_id == website_id,
+        Form.tenant_id == current_user.tenant_id
+    ).offset(skip).limit(limit)
+    forms = db.execute(stmt).scalars().all()
+    return forms
+
 @router.post("/websites/{website_id}/forms", response_model=FormResponse)
 def create_form(
     *,

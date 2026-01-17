@@ -13,7 +13,7 @@ from app.db.session import get_db
 from app.models.user import User, UserRole  # Added Import
 
 reusable_oauth2 = OAuth2PasswordBearer(
-    tokenUrl=f"{settings.API_V1_STR}/login/access-token"
+    tokenUrl=f"{settings.API_V1_STR}/auth/login"
 )
 
 async def get_current_user_context(

@@ -1,6 +1,6 @@
 from typing import Any, List
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.api import deps
 from app.models.website import Website
@@ -10,10 +10,25 @@ import uuid
 
 router = APIRouter()
 
+@router.get("/", response_model=List[WebsiteResponse])
+async def read_websites(
+    skip: int = 0,
+    limit: int = 100,
+    db: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_user),
+) -> Any:
+    """
+    Retrieve websites.
+    """
+    stmt = select(Website).where(Website.tenant_id == current_user.tenant_id).offset(skip).limit(limit)
+    result = await db.execute(stmt)
+    websites = result.scalars().all()
+    return websites
+
 @router.post("/", response_model=WebsiteResponse)
-def create_website(
+async def create_website(
     *,
-    db: Session = Depends(deps.get_db),
+    db: AsyncSession = Depends(deps.get_db),
     website_in: WebsiteCreate,
     current_user: User = Depends(deps.get_current_user),
 ) -> Any:
@@ -25,7 +40,7 @@ def create_website(
         Website.tenant_id == current_user.tenant_id,
         Website.domain == website_in.domain
     )
-    existing_website = db.execute(stmt).scalar_one_or_none()
+    existing_website = (await db.execute(stmt)).scalar_one_or_none()
     
     if existing_website:
         raise HTTPException(
@@ -46,7 +61,7 @@ def create_website(
     )
     
     db.add(website)
-    db.commit()
-    db.refresh(website)
+    await db.commit()
+    await db.refresh(website)
     
     return website

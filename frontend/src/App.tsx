@@ -6,13 +6,20 @@ import Dashboard from './pages/Dashboard';
 import Contacts from './pages/Contacts';
 import ContactDetail from './pages/ContactDetail';
 import Deals from './pages/Deals';
+import Websites from './pages/Websites';
+import Forms from './pages/Forms';
+import FormDetail from './pages/FormDetail';
+
+import Layout from './components/Layout';
+
+
 
 const ProtectedRoute = ({ children }: { children: React.ReactElement }) => {
   const { isAuthenticated } = useAuth();
   if (!isAuthenticated) {
     return <Navigate to="/auth" replace />;
   }
-  return children;
+  return <Layout>{children}</Layout>;
 };
 
 
@@ -57,6 +64,30 @@ function App() {
           />
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="*" element={<Navigate to="/auth" replace />} />
+          <Route
+            path="/websites"
+            element={
+              <ProtectedRoute>
+                <Websites />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/forms"
+            element={
+              <ProtectedRoute>
+                <Forms />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/forms/:id"
+            element={
+              <ProtectedRoute>
+                <FormDetail />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
       </AuthProvider>
     </Router>
